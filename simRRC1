@@ -1,0 +1,87 @@
+ fprintf('Simulation with 1 RRC filter...\n\n');
+%clc, fprintf('Processing %.1f dB...\n',SNR);
+
+% FInd a delay of RRC filter
+N_delay = Nsmp * Nsym + 1;
+
+%Add 0 values between data samples(Interpolation)
+dtintrp = kron(dtTx, [1;zeros(Nsmp-1,1)]);
+
+%Add delay compensating 0
+dtintrp = [dtintrp; zeros(N_delay-1,1)];
+
+% Apply RRC filter
+
+dtFlt1 = filter(hpulse,1,dtintrp);
+
+%Received Signal
+%    1) Attenuate signal(path loss-gamma);
+%    2) Add noise
+
+%Perform filtering in transmitter part
+
+
+% calculate noise energy, matching SNR level
+
+% Energy of QAM 16 symbol
+Es = abs(mapQAM16) .^ 2;     %energy of each of 16 symbols
+Es = mean(Es);    %average symbol energy
+Eb = Es/4;        % 4 bits per symbol, average of 1 bitand
+
+
+% find noise power density
+EbN0 = 10 .^ (SNR/10); %db to linear
+N0 = Eb ./ EbN0;
+sigma = sqrt(N0/2); % standard deviation of noise process
+
+for n = 1:length(SNR)
+  fprintf('Processing %.1f dB...\n',SNR(n));
+  %Generate noise with sigma
+  N_noise = N*Nsmp+N_delay-1;
+  sNoi = sigma(n) * (randn(N_noise,1) + 1i*randn(N_noise,1));
+
+
+  %Add noise to modulated signal
+  dtRx = gamma * dtFlt1;    %1) path loss
+  dtRx = dtRx + sNoi;       %2) Add noise
+  % Apply RRC filter
+
+
+  %Downsample and delay compensate
+  dtRx = dtRx(N_delay:Nsmp:end);
+
+  %Detection of QAM16 signal
+  %replicate map vector and received signal vector
+  K_amp = 1/gamma;
+  dtRxMtx = K_amp * repmat(dtRx(:),1,16); %replicated matrix of received signal
+  mapQAM16mtx = repmat(mapQAM16(:).',N,1); %replicated matrix of constelation
+
+  %Distance of euclidean distance
+  distMtx=abs(dtRxMtx-mapQAM16mtx);
+
+  %Find minimum distance column numbers
+  [~, minIdx] = min(distMtx,[],2);
+
+  % find numbers of errors
+  Num_Err(n) = sum(minIdx ~= orig_symb);
+  P_err1(n) = Num_Err(n) / N;
+
+  fprintf('Symbol Error probability %.5f dB...\n',P_err1(n));
+ end
+%----------------------------------------------------------------------
+
+figure(1);
+% No filters case--plot QAM 16 signal received
+idx = 1:N/10000:N;
+subplot(1,3,2)    %This is no filter case
+plot(real(dtRx(idx)), imag(dtRx(idx)), 'b.'); grid on; axis square
+xlabel('Real part');ylabel('Imag part');title('1 RRC FLT')
+
+%plot QAM16 ideal
+hold on, plot(real(gamma*mapQAM16),imag(gamma*mapQAM16),'rx'); hold off
+
+%Plot Symbol Error rate(SER) curve
+figure(2)
+hold on
+semilogy(SNR, P_err1,'r'); grid on, hold off
+xlabel('SNR, dB'); ylabel('SER')
