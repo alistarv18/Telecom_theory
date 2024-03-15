@@ -1,0 +1,40 @@
+
+Fs = Nsmp/Tsym;  % sample rate
+Rs = 1/Tsym;     % symbol rate
+sps = Fs/Rs;     % samples per symbol
+
+%
+% Root raised cosine pulse filter
+% https://www.michael-joost.de/rrcfilter.pdf
+%
+r = beta; % bandwidth factor
+ntaps = 2 * Nsym * sps + 1; % Pulse duration is Nsym symbols
+
+st = [-floor(ntaps/2):floor(ntaps/2)] / sps; % symbol time = t/Ts values
+hpulse = 1/sqrt(sps) * (sin ((1-r)*pi*st) + 4*r*st.*cos((1+r)*pi*st)) ./ (pi*st.*(1-(4*r*st).^2));
+
+% fix the removable singularities
+hpulse(ceil(ntaps/2)) = 1/sqrt(sps) * (1 - r + 4*r/pi); % t = 0 singulatiry
+sing_idx = find(abs(1-(4*r*st).^2) < 0.000001);
+for k = [1:length(sing_idx)]
+    hpulse(sing_idx) = 1/sqrt(sps) * r/sqrt(2) * ((1+2/pi)*sin(pi/(4*r))+(1-2/pi)*cos(pi/(4*r)));
+endfor
+
+% normalize to 0 dB gain
+hpulse = hpulse / max(hpulse);
+
+
+% Plots for task 3
+figure(3)  %root raised cosine filter
+subplot(2,1,1), stem(st, hpulse); grid on; ylabel('Impulse Response')
+
+w = 0:0.01:1;
+H = freqz(hpulse,1,w*pi);
+subplot(2,1,2), plot(w*Fs/2, abs(H)), grid on; ylabel('AFR')
+%-----------------------------------------------------------------------------
+figure(4)  %full raised cosine filter
+hRC = conv(hpulse, hpulse); NRM = max(hRC);hRC = hRC/NRM;
+HRC = freqz(hRC,1,w*pi);
+st = [-floor(ntaps-1):floor(ntaps-1)] / sps; % symbol time = t/Ts values
+subplot(2,1,1), stem(st, hRC); grid on; ylabel('Impulse Response')
+subplot(2,1,2), plot(w*Fs/2, abs(HRC)), grid on; ylabel('AFR')
