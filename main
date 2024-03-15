@@ -1,0 +1,53 @@
+clc, clear variables
+
+%Main program parameters
+Tsym = 10e-3  %Symbol time
+N = 1e5;  %Number of QAM 16 generated symbols(1 million)
+beta = 0.25;  %Roll of factor of filter
+gamma = 0.3; %Path loss of channel
+Nsmp = 11;
+Nsym=3;
+SNR = 0:0.5:25; %Signal to noise ratio
+%SNR = 25;
+%-------------------------------------------------------------------------------
+%Task 1. Generate QAM 16 data (randomly)
+%-------------------------------------------------------------------------------
+% Generate indexes for random symbols(integers from 0 to 16)
+idx = randi(16,N,1);
+orig_symb = idx;     %save it for comparison
+
+% QAM 16 constellation map
+mapQAM16 = [-1-1i; -1-3i; -1+1i; -1+3i; -3-1i; -3-3i; -3+1i; -3+3i; +1-1i; +1-3i; +1+1i; +1+3i; +3-1i; +3-3i; +3+1i; +3+3i];
+
+%Read constellation map at random indices
+
+dtTx =mapQAM16(idx);  %transmitted data(no noise)
+
+
+%-------------------------------------------------------------------------------
+%Task 2. Simulation without pulse shaping filter
+%-------------------------------------------------------------------------------
+simNOFLT
+
+
+%-------------------------------------------------------------------------------
+%Task 3. Calculate Root Raised Cosine filter (RRC)
+%-------------------------------------------------------------------------------
+sqrtRRCcalc
+
+
+%-------------------------------------------------------------------------------
+%Task 4.Simulation with a single RRC filter
+%-------------------------------------------------------------------------------
+simRRC1
+
+
+%-------------------------------------------------------------------------------
+%Task 5. Simulation with a full RC filter (2*RRC)
+%-------------------------------------------------------------------------------
+simRRC2
+
+
+
+%Legend
+legend('NO FLT','Single RRC','Full RC')
