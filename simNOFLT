@@ -1,0 +1,66 @@
+%SNR=10;
+%clc, fprintf('Processing %.1f dB...\n',SNR);
+
+%Received Signal
+%    1) Attenuate signal(path loss-gamma);
+%    2) Add noise
+
+
+
+% calculate noise energy, matching SNR level
+
+% Energy of QAM 16 symbol
+Es = abs(mapQAM16) .^ 2;     %energy of each of 16 symbols
+Es = mean(Es);    %average symbol energy
+Eb = Es/4;        % 4 bits per symbol, average of 1 bitand
+
+
+% find noise power density
+EbN0 = 10 .^ (SNR/10); %db to linear
+N0 = Eb ./ EbN0;
+sigma = sqrt(N0/2); % standard deviation of noise process
+
+for n = 1:length(SNR)
+  fprintf('Processing %.1f dB...\n',SNR(n));
+  %Generate noise with sigma
+  sNoi = sigma(n) * (randn(N,1) + 1i*randn(N,1));
+
+
+  %Add noise to modulated signal
+  dtRx = gamma * dtTx;    %1) path loss
+  dtRx = dtRx+sNoi;       %2) Add noise
+  %Detection of QAM16 signal
+  %replicate map vector and received signal vector
+  K_amp = 1/gamma;
+  dtRxMtx = K_amp * repmat(dtRx(:),1,16); %replicated matrix of received signal
+  mapQAM16mtx = repmat(mapQAM16(:).',N,1); %replicated matrix of constelation
+
+  %Distance of euclidean distance
+  distMtx=abs(dtRxMtx-mapQAM16mtx);
+
+  %Find minimum distance column numbers
+  [~, minIdx] = min(distMtx,[],2);
+
+  % find numbers of errors
+  Num_Err(n) = sum(minIdx ~= orig_symb);
+  P_err(n) = Num_Err(n) / N;
+
+  fprintf('Symbol Error probability %.5f dB...\n',P_err(n));
+ end
+%----------------------------------------------------------------------
+
+figure(1);
+% No filters case--plot QAM 16 signal received
+idx = 1:N/10000:N;
+subplot(1,3,1)    %This is no filter case
+plot(real(dtRx(idx)), imag(dtRx(idx)), 'b.'); grid on; axis square
+xlabel('Real part');ylabel('Imag part');title('NO FLT')
+
+%plot QAM16 ideal
+hold on, plot(real(gamma*mapQAM16),imag(gamma*mapQAM16),'rx'); hold off
+
+%Plot Symbol Error rate(SER) curve
+figure(2)
+subplot(1,3,1)
+semilogy(SNR, P_err,'b'); grid on
+xlabel('SNR, dB'); ylabel('SER')
